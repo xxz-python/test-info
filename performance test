@@ -1,0 +1,949 @@
+
+
+
+
+
+
+ 
+
+附：运行性能测试
+
+
+
+
+
+
+
+
+
+北京凌云雀科技有限公司
+
+
+目录
+1	前置准备工作	1
+1.1	容器平台部分	1
+1.2	Devops部分	1
+1.3	SERVICE MESH部分	6
+2	生成准备测试数据的环境变量文件	7
+3	准备测试数据	13
+4	等待准备测试数据的容器退出	14
+5	将环境变量保存成文件到测试发起机器。如：jmeter-mtbf.env	15
+6	运行devops 性能测试时保存如下环境变量	24
+7	将测试脚本存放到测试发起机器	28
+8	将start.sh脚本保存到测试发起机器并追加755权限	29
+9	运行性能测试	35
+10	注意事项	36
+11	清理测试数据	38
+
+
+1前置准备工作
+1.1容器平台部分
+1.给节点打标签。例：集群有6个节点0-6
+2.将集群一部分节点（0-4）打上 realnode 标签，用来运行真实 pod。
+kubectl label node <node名称> realnode= 
+
+(a) 将集群一部节点（5）打上 fakenode 标签，用来运行 kubrmark pod。
+kubectl label node <node名称> fakenode=
+
+(b) 将集群一部分节点 （6）打上 daemonset-node 标签，用来运行daemonset 的pod。
+kubectl label node <node名称> daemonset-node=
+
+(c) 通过平台界面部署alb2，部署方法参考平台用户手册。
+3.通过平台界面通过operator部署devops依赖的工具，如jenkins、gitlab、harbor。如不需要测试devops性能可在部署平台时不部署devops产品并跳过该步骤。
+1.2Devops部分
+1.通过平台界面通过operator部署devops依赖的工具，如jenkins、gitlab、harbor。文档参考平台使用手册。
+2.准备 harbor 镜像仓库数据：
+(a) 选择集群任意一个节点登陆到节点上（节点A）。
+(b) 将镜像（build-harbor.alauda.cn/automation/qaimages:helloworld） docker pull 到集群节点A上。
+假如部署的 harbor 为 http 的方式，需要修改集群所有节点的 /etc/docker/daemon.json 文件并将 harbor 镜像仓库地址保存到 insecure-registries 中，然后执行 systemctl reload docker
+例：
+{
+  "debug": false,
+  "insecure-registries": [
+    "10.0.128.214:60080",
+    "192.168.0.0/16",
+    "10.0.128.214/16",
+    "10.0.128.218:31200" #harbor 镜像仓库地址
+  ],
+  "ip-forward": true,
+  "ipv6": false,
+  "live-restore": true,
+  "log-driver": "json-file",
+  "log-level": "warn",
+  "log-opts": {
+    "max-file": "2",
+    "max-size": "100m"
+  },
+  "selinux-enabled": false,
+  "metrics-addr": "0.0.0.0:9323",
+  "experimental": true
+}
+(c) 登陆部署的harbor，在 harbor 中创建名为 performance 的项目。
+(d) 集群节点A执行 docker login <harbor仓库地址>
+(e) 在集群节点A使用脚本将 build-harbor.alauda.cn/automation/qaimages:helloworld 镜像上传到 harbor 中并复制为指定规模
+脚本：
+#!/bin/bash
+# harbor 镜像仓库地址
+dist_harbor_repostory=<harbor url>
+# harbor项目
+dist_harbor_project=performance
+# 准备在平台准备流水线数据的项目数
+platform_project_number=2
+# 每个项目下流水线数量
+pipeline_number_per_project=10
+# 每个镜像仓库tag数，根据数据规模设置
+harbor_repostory_tag_number=10
+# 平台项目名称前缀
+project_name_prefix=project
+# 源镜像名称
+src_image=build-harbor.alauda.cn/automation/qaimages:helloworld
+ 
+for project_index in $(seq 1 ${platform_project_number});do
+    for pipeline_index in $(seq 1 ${pipeline_number_per_project});do
+        for repostory_tag_index in $(seq 1 ${harbor_repostory_tag_number});do
+            dist_image="${dist_harbor_repostory}/${dist_harbor_project}/${project_name_prefix}-${project_index}-pipeline-${pipeline_index}:${project_name_prefix}-${project_index}-pipeline-${pipeline_index}-${repostory_tag_index}"
+            echo "docker tag ${src_image} ${dist_image} && docker push ${dist_image} && docker rmi ${dist_image}"
+            docker tag ${src_image} ${dist_image} && docker push ${dist_image} && docker rmi ${dist_image}
+        done
+    done
+done
+
+4.准备 gitlab 代码仓库数据：
+(a) 将 build-harbor.alauda.cn/automation/qaimages:helloworld 镜像上传到 harbor 一个公有项目下，如 library项目。
+docker tag build-harbor.alauda.cn/automation/qaimages:helloworld <harbor 地址>/library/qaimages:helloworld
+docker push <harbor 地址>/library/qaimages:helloworld
+
+(b) 将测试代码仓库 https://gitlab-ce.alauda.cn/alaudatest-public/go-test.git clone到本地
+(c) 修改代码仓库中的 Dockerfile文件第一行，将镜像仓库 build-harbor.alauda.cn/automation/qaimages:helloworld 修改为 <harbor 地址>/library/qaimages:helloworld。
+ARG BASE_IMAGE=build-harbor.alauda.cn/automation/qaimages:helloworld
+FROM $BASE_IMAGE
+LABEL Version="1.1.90790798"
+ENV VERSION=1.0.7
+COPY a.sh /
+CMD echo $VERSION && sleep 60
+git commit -a -m "change base image"
+(d) 将脚本保存到和代码仓库平行的路径下。
+#!/bin/bash
+ 
+# 目标远程代码仓库gitlab地址
+dist_gitlab_url=http://192.168.128.218:31200
+# 目标代码仓库组代码仓库会同步到这个组里,组不存在时需要先创建。
+dist_gitlab_group=root
+# 目标代码仓库名称前缀
+coderepostory_prefix=go-test-
+# 目标代码仓库数量
+coderepostory_number=500
+# gitlab 用户名
+gitlab_user=root
+# gitlab 密码，注意密码不支持需要进行urlencode的字符
+gitlab_password=gitlab%40123
+# harbor镜像仓库地址
+harbor_registry=192.168.128.218:31210
+# 存放在 harbor 中的 base 镜像，需要没有认证
+base_image=${harbor_registry}/library/qaimages:helloworld
+# 持续构建流水线构建的镜像push到哪个harbor项目下，需要提前创建好
+harbor_registry_project=test
+ 
+pwd_dir=$(cd `dirname $0`; pwd)
+ 
+cd ${pwd_dir}/go-test
+ 
+sed -i 's# BASE_IMAGE.*# BASE_IMAGE='${base_image}'#' Dockerfile
+sed -i 's#192.168.130.75:31210#'${harbor_registry}'#' .build/cicd.yaml
+sed -i 's#192.168.130.75:31210#'${harbor_registry}'#' .build/complex-cicd.yaml
+ 
+git config --global user.email "${gitlab_user}@perf.com"
+git config --global user.name "${gitlab_user}"
+git config --global push.default simple
+ 
+_gitlab_url=`echo ${dist_gitlab_url}|awk -F '://' '{printf "%s://'"${gitlab_user}:${gitlab_password}@"'%s",$1,$2}'`
+for coderepostory_index in $(seq 1 ${coderepostory_number});do
+    cd ${pwd_dir}/go-test
+    origin_name="origin"
+    sed -i 's#test/got-test-privite.*#'${harbor_registry_project}/got-test-privite-${coderepostory_index}'#' .build/cicd.yaml
+    sed -i 's#test/got-test-privite#'${harbor_registry_project}/got-test-privite'#' .build/complex-cicd.yaml
+    git commit -a -m "change base image"
+    git remote set-url ${origin_name} ${_gitlab_url}/${dist_gitlab_group}/${coderepostory_prefix}${coderepostory_index}.git
+    git push
+    for remote in `git branch -r | grep -v master `; do
+        git checkout --track $remote || true
+    done
+    git push -u ${origin} --all || true
+    git push --tags
+done
+cd ${pwd_dir}
+(e) 给脚本增加可执行权限并执行脚本
+(f) 可登陆gitlab查看是否创建成功
+1.3SERVICE MESH部分
+需要部署服务网格，请参考用户手册或者功能测试用例部署服务网格章节。
+2生成准备测试数据的环境变量文件
+# 平台协议
+API_TYPE=https
+# 平台访问地址
+API_IP=<平台地址>
+# 平台端口
+API_PORT=443
+# 业务集群名称
+REGION_NAME=performance
+#测试项目名称前缀，创建的项目名称会以这个开头
+PROJECT_PREFIX=project
+# 项目名称，一般不需要改
+PRO_NAME=project-1
+# 命名空间名称，一般不需要改
+NS_NAME=project-1-ns-1
+# 准备数据所需镜像仓库地址
+IMAGE=build-harbor.alauda.cn/automation/qaimages:helloworld
+# alb性能测试所需镜像仓库地址
+LOAD_APP_IMAGE=build-harbor.alauda.cn/automation/qaimages:nginx-optimized
+# 平台管理员账号
+ACCOUNT=<平台账号>
+# 平台管理员密码
+PASSWORD=<password>
+# 用户登录方式，一般是本地用户。支持ldap用户
+AUTH=local
+# 执行时间，单位秒。需要比准备数据时间长，否则数据可能没准备完就被kill掉，尽量大一点。性能测试准备1000项目、3000命名空间、5000用户、1万应用时需要10小时。可以作为参考
+RUN_TIME=10800
+# 测试数据的域名，一般不需要改
+DOMAIN_NAME=performance.test.cn
+# 平台标签域名
+LABELBASEDOMAIN=cpaas.io
+# 平台global命名空间
+GLOBAL_NS=cpaas-system
+# 有100个deployment 的应用的名称，一般不用修改
+DEPLOY_100_APP_NAME=deploy-100-app
+# pod下有20个容器的应用的名称，一般不用修改
+CONTAINER_20_APP_NAME=container-20-app
+# 准备数据创建的项目名称前缀
+PROJECT_PREFIX=project
+# 测试的规模（规模分为：small，large,medium默认是medium）
+DATA_SCALE=large
+# 要创建的项目数量
+PROJECT_NUMBER=100
+# 每个项目下有多少个命名空间，至少需要有1个
+NS_NUMBER_PER_PROJECT=2
+# 部署在真实节点的应用数量
+NORMAL_APP_NUMBER=100
+# 创建在虚拟节点的应用数量
+FAKE_APP_NUMBER=0
+# 要创建的statefulset的数量
+STATEFULSET_NUMBER=20
+# 要创建的daemonset的数量
+DAEMONSET_NUMBER=20
+# daemonset 的pod的节点选择器
+DAEMONSET_NODE_SELECTOR="daemonset-node":""
+# 创建statefulset、100 容器pod应用、100 deployment应用的pod节点选择器
+NODE_SELECTOR="fakenode":""
+# statefulset、daemonset、100容器pod、100 deployment应用pod的污点容忍
+toleration_key=fakenode
+# 要创建的用户数量，高于500时需要是500的倍数，每个项目最多绑定500用户，高于500时会绑定到其他项目下。
+USERS=500
+# 创建的应用名称前缀，一般不用修改
+APP_NAME=perf
+# 要创建的ingress数量，每个应用1个，应用数量超过设置的ingress数量时，创建应用时就不再创建对应ingress
+INGRESS_NUMBER=1000
+# ALB名称，必须指定
+ALB_NAME=alb2
+# ALB 端口，准备数据时会创建这个端口，一定要确定这个端口不存在
+ALB_PORT=8080
+# 虚拟机数量
+VM_NUMBER=0
+# 虚拟机名称前缀
+VM_PREFIX_NAME=test
+# 虚拟机镜像名称
+KUBEVIRT_IMAGE=nginx-7.9
+ 
+#----- 以下是Service Mesh新增加的   -----
+# 是否测试Service Mesh。为true时，当部署了Service Mesh产品，就会创建Service Mesh测试数据
+TEST_ASM=true
+# 配置字典和保密字典数量
+CONFIGMAP_SECRET_NUMBER=20
+# 空应用数量
+HOLLO_APP_NUMBER=10
+ 
+ 
+#----- 以下是准备devops 性能测试数据所需参数，没有部署devops产品时，会自动跳过数据准备   -----
+#即使部署了devops产品也不想准备devops测试数据时，设置为false即可
+TEST_DEVOPS=true
+# jenkins 访问地址
+JENKINS_URL=<Jenkins url>
+# jenkins凭据名称
+JENKINS_SECRET_NAME=jenkins-global
+# jenkins 工具链名称，假如不存在时会创建
+JENKINS_NAME=jenkins
+# jenkins用户名称
+JENKINS_USERNAME=admin
+# jenkins 用户 token
+JENKINS_TOKEN=<Jenkins token>
+# harbor工具链名称，假如不存在时会创建
+HARBOR_NAME=harbor-registry
+# harbor 访问地址。
+HARBOR_URL=<harbor url>
+# harbor凭据名称
+HARBOR_SECRET_NAME=harbor-global
+# harbor 用户名
+HARBOR_USERNAME=admin
+# harbor 密码
+HARBOR_PASSWORD=<harbor password>
+# harbor 仓库项目名称
+HARBOR_PROJECT=performance
+# gitlab 访问地址
+GITLAB_URL=<gitlab url>
+# gitlab 工具链名称
+GITLAB_NAME=gitlab-enterprise
+# gitlab 凭据名称
+GITLAB_SECRET_NAME=gitlab-global
+# gitlab 用户名
+GITLAB_USERNAME=<gitlab 用户名>
+# gitlab 密码
+GITLAB_PASSWORD=<gitlab 密码>
+# gitlab 仓库组名
+GITLAB_ACCOUNT=root
+# gitlab token
+GITLAB_TOKEN=<gitlab token>
+# gitlab 仓库名称
+GITLAB_REPO=go-test-private
+#仓库类型
+CODE_REPO_TYPE=gitlab/gitea
+# 流水线数量100的倍数，每个项目最多100个流水线。例如500个流水线会平均分配到5个项目中
+PIPELINE_NUMBER=500
+# devops 凭据数量，项目私有凭据会凭据创建在10个项目下，全局凭据直接创建在公共命名空间。例如1000，会创建1000个全局凭据，1000个项目私有凭据（10个项目，每个项目100个私有凭据）
+DEVOPS_SECRET_NUMBER=1000
+# 流水线历史记录保留数量
+MAX_PIPELINE_HISTORY=20
+# 每条流水线执行次数
+EXEC_PIPELINRE_NUMBER_PER_PIPELINE=20
+ 
+#----- 下面是性能稳定性测试框架所需环境变量------
+# 执行测试时间，准备性能测试数据需要是1
+RUN_TEST_TIME=1
+# 测试报告 webhook token
+REPORT_WEBHOOK_TOKEN=7e91cc7b-bc8d-4f35-bc55-6ca7b46977a7
+# 测试日志存放路径，一般无需改动
+REPORT_DIR=/home/data/result
+# jmeter jmx 名称
+JMETER_JMX_NAME=/performance/testcases/TestACP2.14/medium-setup-acp3.6.jmx
+# 执行jmx 超时时间，单位秒。当执行jmx时间超过RUN_TIME+RUN_JMX_TIMEOUT 时会强制终止执行
+RUN_JMX_TIMEOUT=60
+# 邮箱收件人
+RECIPIENTS=<username@xx.xx>
+# 邮件标题
+EMAIL_TITLE=
+# 邮箱服务器
+SMTP_HOST=Smtp.office365.com
+# 邮箱服务器端口
+SMTP_PORT=587
+# 发件人账号
+SMTP_USERNAME=<username@xx.xx>
+# 邮箱密码
+SMTP_PASSWORD=<发件人邮箱密码>
+# 发件人邮箱，一般与发件人账号一致
+EMAIL_FROM=<username@xx.xx>
+# 是否发送附件，为防止发送失败，需关闭
+EMAIL_ATTACH=false
+# 邮件加密方式，值支持ssl、starttls和空
+SMTP_SSL=starttls
+# jmeter堆内存设置
+HEAP=-Xms1g -Xmx12g -XX:MaxMetaspaceSize=256m
+# 是否发送监控数据
+SEND_METRICS=false
+# pushgateway地址
+PUSH_GATE_WAY=
+# 监控metrics job名称
+METRICS_JOB_NAME=stability
+# 监控标签和测试数据索引
+METRICS_NAME_AND_INDEX=stability_{label}_ERROR:Error %,stability_{label}_Line_95_percent:95% Line
+# 测试用例级别
+LEVELS=L0,L1,L2,L3
+# 是否将jtl内容发送到logstash中，默认关闭即可
+SEND_JTL_TO_LOGSTASH=false
+# logstash 地址
+LOGSTASH_HTTP_URL=
+3准备测试数据
+docker run -dti --name mtbf --env-file <第二步环境变量文件路径> --network=host -v /home/report:/home/data/result <概述里性能测试脚本镜像>
+4等待准备测试数据的容器退出
+5将环境变量保存成文件到测试发起机器。如：jmeter-mtbf.env
+1.页面压测所需要环境变量
+# 平台api协议
+API_TYPE=https
+# 平台api访问地址
+API_IP=
+# 平台api端口
+API_PORT=
+# 标签域名，一般为cpaas.io(acp 2.14开始变量名称由GROUP改为LABELBASEDOMAIN)
+LABELBASEDOMAIN=cpaas.io
+# 平台global命名空间
+GLOBAL_NS=cpaas-system
+# 测试集群名称
+REGION_NAME=perf
+# 测试命名空间名称
+NS_NAME=project-1-ns-1
+# 测试项目名称
+PRO_NAME=project-1
+# 5分钟完成登陆用户数，3.4 新加变量
+USERS=100
+# 用户为本地用户，支持ldap用户
+AUTH=local
+# 平台账号，需要是本地账号。支持多个账号，多账号时账号和密码用分别用逗号隔开，顺序一一对应且第一个用户为开发人员，第二个用户为项目管理员，第三个用户为平台管理员，只有一个账号时需要是平台管理员。
+ACCOUNT=admin@cpaas.io
+# 平台密码
+PASSWORD=password@123
+# 是否运行devops，true则运行，false则不运行
+TEST_DEVOPS=true
+# gitlab 访问地址
+GITLAB_URL=
+# gitlab 仓库组名
+GITLAB_ACCOUNT=root
+# gitlab 仓库名称
+GITLAB_REPO=go-test-1
+# gitlab 凭据名称
+GITLAB_SECRET_NAME=gitlab-global
+# gitlab 工具链名称
+GITLAB_NAME=gitlab-enterprise
+# jenkins 工具链名称，假如不存在时会创建
+JENKINS_NAME=jenkins
+# harbor工具链名称，假如不存在时会创建
+HARBOR_NAME=harbor-registry
+# harbor 访问地址
+HARBOR_URL=
+# harbor 仓库项目名称
+HARBOR_PROJECT=
+# 流水线名称
+PIPELINE_NAME=project-1-pipeline-1
+ 
+IMAGE_REGISTRY_NAME=harbor-registry-library-project-9-pipeline-1
+#并发创建应用镜像地址
+IMAGE=build-harbor.alauda.cn/automation/
+#并发获取应用详情的应用名称
+APP_NAME=perf-00001
+ 
+CREATE_APP_NAME=app-create
+#并发创建应用pod节点选择器标签
+NODE_SELECTOR="fakenode":""
+#性能测试测试容器扩缩容 pod 节点污点容忍的key
+toleration_key=fakenode
+# 检查应用状态，超时检查次数
+timeout_count=100
+#  检查应用状态，每次检查间隔时间
+delay_ms=200
+ 
+#----- Service Mesh 测试参数
+# 是否测试 Service Mesh 性能，没有部署 Service Mesh 产品或设置为 false 时会跳过相关测试 case
+TEST_ASM=true
+ 
+#----- 下面是性能稳定性测试框架所需环境变量------
+#单个jmx文件执行测试时间。单位：秒
+RUN_TIME=300
+#执行测试总时间。单位：秒 （顺序执行测试，每个jmx文件只执行一遍，这个值需设置为1）
+RUN_TEST_TIME=1
+# 测试报告 webhook token
+REPORT_WEBHOOK_TOKEN=7e91cc7b-bc8d-4f35-bc55-6ca7b46977a7
+# 测试日志存放路径，一般无需改动
+REPORT_DIR=/home/data/result
+# jmeter jmx 名称
+JMETER_JMX_NAME=/performance/testcases/TestACP2.14/medium-all-test-cases.jmx
+# 执行jmx 超时时间，单位秒。当执行jmx时间超过RUN_TIME+RUN_JMX_TIMEOUT 时会强制终止执行
+RUN_JMX_TIMEOUT=300
+# 邮箱收件人
+RECIPIENTS=<username@xx.xx>
+# 邮件标题
+EMAIL_TITLE=
+# 邮箱服务器
+SMTP_HOST=Smtp.office365.com
+# 邮箱服务器端口
+SMTP_PORT=587
+# 发件人账号
+SMTP_USERNAME=<username@xx.xx>
+# 邮箱密码
+SMTP_PASSWORD=<发件人邮箱密码>
+# 发件人邮箱，一般与发件人账号一致
+EMAIL_FROM=<username@xx.xx>
+# 是否发送附件，为防止发送失败，需关闭
+EMAIL_ATTACH=false
+# 邮件是否加密
+SMTP_SSL=starttls
+# jmeter堆内存设置
+HEAP=-Xms2g -Xmx20g -XX:MaxMetaspaceSize=256m
+# 是否发送监控数据
+SEND_METRICS=false
+# pushgateway地址
+PUSH_GATE_WAY=
+# 监控metrics job名称
+METRICS_JOB_NAME=stability
+# 监控标签和测试数据索引
+METRICS_NAME_AND_INDEX=stability_{label}_ERROR:Error %,stability_{label}_Line_95_percent:95% Line
+# 测试用例级别
+LEVELS=L0,L1,L2,L3
+# 是否将jtl内容发送到logstash中，默认关闭即可
+SEND_JTL_TO_LOGSTASH=false
+# logstash 地址
+LOGSTASH_HTTP_URL=
+
+2.api压测所需要环境变量
+#执行测试的jmx脚本文件列表，以逗号分隔。<jmx文件在容器中的路径>/<jmx文件名称>
+JMETER_JMX_NAME=/performance/testcases/TestACP2.10/exec_devops_pipeline.jmx,/performance/testcases/TestACP2.10/get-app-topology.jmx,/performance/testcases/TestACP2.10/get_100_deploy_app_yaml.jmx,/performance/testcases/TestACP2.10/get_20_container_pod_detail.jmx,/performance/testcases/TestACP2.10/get_acp_ns_overview_page.jmx,/performance/testcases/TestACP2.10/get_app_details.jmx,/performance/testcases/TestACP2.10/get_app_yaml.jmx,/performance/testcases/TestACP2.10/get_asm_flow_monitor_page.jmx,/performance/testcases/TestACP2.10/get_asm_overview_page.jmx,/performance/testcases/TestACP2.10/get_asm_service_topology_page.jmx,/performance/testcases/TestACP2.10/get_audit.jmx,/performance/testcases/TestACP2.10/get_configmap_details.jmx,/performance/testcases/TestACP2.10/get_deploy_details.jmx,/performance/testcases/TestACP2.10/get_devops_overview_page.jmx,/performance/testcases/TestACP2.10/get_devops_pipeline_history_details.jmx,/performance/testcases/TestACP2.10/get_devops_secret_details.jmx,/performance/testcases/TestACP2.10/get_ingress_details.jmx,/performance/testcases/TestACP2.10/get_log.jmx,/performance/testcases/TestACP2.10/get_log_on_user_view.jmx,/performance/testcases/TestACP2.10/get_namespace_limitrange.jmx,/performance/testcases/TestACP2.10/get_node_details.jmx,/performance/testcases/TestACP2.10/get_ns_details.jmx,/performance/testcases/TestACP2.10/get_ns_limitrange.jmx,/performance/testcases/TestACP2.10/get_ns_quota.jmx,/performance/testcases/TestACP2.10/get_project_details.jmx,/performance/testcases/TestACP2.10/get_project_quotas.jmx,/performance/testcases/TestACP2.10/get_role_details.jmx,/performance/testcases/TestACP2.10/get_svc_details.jmx,/performance/testcases/TestACP2.10/list-app-alb-rules.jmx,/performance/testcases/TestACP2.10/list-devops-code-quality.jmx,/performance/testcases/TestACP2.10/list_app.jmx,/performance/testcases/TestACP2.10/list_app_address.jmx,/performance/testcases/TestACP2.10/list_app_version.jmx,/performance/testcases/TestACP2.10/list_asm_gatewaygroup.jmx,/performance/testcases/TestACP2.10/list_asm_microservice.jmx,/performance/testcases/TestACP2.10/list_cluster.jmx,/performance/testcases/TestACP2.10/list_configmap.jmx,/performance/testcases/TestACP2.10/list_cronjob.jmx,/performance/testcases/TestACP2.10/list_deploy.jmx,/performance/testcases/TestACP2.10/list_devops_archived_pipeline_historys.jmx,/performance/testcases/TestACP2.10/list_devops_coderepository.jmx,/performance/testcases/TestACP2.10/list_devops_global_secret.jmx,/performance/testcases/TestACP2.10/list_devops_imagerepository.jmx,/performance/testcases/TestACP2.10/list_devops_imagerepository_tags.jmx,/performance/testcases/TestACP2.10/list_devops_pipeline.jmx,/performance/testcases/TestACP2.10/list_devops_pipeline_historys.jmx,/performance/testcases/TestACP2.10/list_devops_secret.jmx,/performance/testcases/TestACP2.10/list_devops_toolchain.jmx,/performance/testcases/TestACP2.10/list_ingress.jmx,/performance/testcases/TestACP2.10/list_job_history.jmx,/performance/testcases/TestACP2.10/list_namespace_on_user_view.jmx,/performance/testcases/TestACP2.10/list_node.jmx,/performance/testcases/TestACP2.10/list_ns_of_project.jmx,/performance/testcases/TestACP2.10/list_ns_of_resource_management.jmx,/performance/testcases/TestACP2.10/list_pod_of_100_deploy_app.jmx,/performance/testcases/TestACP2.10/list_pod_of_app.jmx,/performance/testcases/TestACP2.10/list_pod_of_ns.jmx,/performance/testcases/TestACP2.10/list_project.jmx,/performance/testcases/TestACP2.10/list_project_on_platform_view.jmx,/performance/testcases/TestACP2.10/list_resourcetypes_of_cluster.jmx,/performance/testcases/TestACP2.10/list_roles.jmx,/performance/testcases/TestACP2.10/list_svc.jmx,/performance/testcases/TestACP2.10/list_user.jmx,/performance/testcases/TestACP2.10/list_user_of_ns.jmx,/performance/testcases/TestACP2.10/list_user_of_project.jmx,/performance/testcases/TestACP2.10/login.jmx,/performance/testcases/TestACP2.10/post_put_delete_configmap.jmx,/performance/testcases/TestACP2.10/post_put_delete_deployment.jmx,/performance/testcases/TestACP2.10/post_put_delete_ingress.jmx,/performance/testcases/TestACP2.10/post_put_delete_pipeline.jmx,/performance/testcases/TestACP2.10/post_put_delete_svc.jmx,/performance/testcases/TestACP2.10/search_app.jmx,/performance/testcases/TestACP2.10/search_configmap.jmx,/performance/testcases/TestACP2.10/search_deploy.jmx,/performance/testcases/TestACP2.10/search_devops_coderepository.jmx,/performance/testcases/TestACP2.10/search_devops_imagerepository.jmx,/performance/testcases/TestACP2.10/search_ingress.jmx,/performance/testcases/TestACP2.10/search_namespace.jmx,/performance/testcases/TestACP2.10/search_namespace_from_resourcemanager.jmx,/performance/testcases/TestACP2.10/search_node.jmx,/performance/testcases/TestACP2.10/search_pod.jmx,/performance/testcases/TestACP2.10/search_project.jmx,/performance/testcases/TestACP2.10/search_svc.jmx,/performance/testcases/TestACP2.10/search_user.jmx,/performance/testcases/TestACP2.10/update_app.jmx,/performance/testcases/TestACP2.10/visit_app_by_alb_default_svc.jmx,/performance/testcases/TestACP2.10/visit_app_by_alb_multy_svc.jmx,/performance/testcases/TestACP2.10/visit_app_by_asm_gateway.jmx,/performance/testcases/TestACP2.10/visit_app_by_asm_service.jmx,/performance/testcases/TestACP2.10/get_devops_coderepository_detail.jmx
+# 测试日志存放路径，一般无需改动
+REPORT_DIR=/home/data/result
+#平台api访问地址
+API_IP=<平台访问地址>
+#平台api端口
+API_PORT=
+#平台api协议
+API_TYPE=https
+#单个jmx文件执行测试时间。单位：秒
+RUN_TIME=900
+#执行测试总时间。单位：秒 （顺序执行测试，每个jmx文件只执行一遍，这个值需设置为1）
+RUN_TEST_TIME=6
+#平台账号，需要是本地账号。支持多个账号，多账号时账号和密码用分别用逗号隔开，顺序一一对应且第一个用户为开发人员，第二个用户为项目管理员，第三个用户为平台管理员，只有一个账号时需要是平台管理员。
+ACCOUNT=
+#平台密码
+PASSWORD=password
+# L0 case 并发数
+THREAD_NUM=50
+# L1 case 并发数（低并发case）
+L1_THREAD_NUM=1
+#L2 搜索 case并发数(acp3.4 新增)
+L2_THREAD_NUM=5
+#L3 case并发数(acp2.12之后增加的资源创建更新删除场景)
+L3_THREAD_NUM=5
+#应用下有100个deployment的应用名称
+DEPLOY_100_APP_NAME=deploy-100-app
+#下面有20个容器的app的名称
+CONTAINER_20_APP_NAME=container-20-app
+# 5分钟完成登陆用户数，3.4 新加变量
+USERS=1000
+# 执行jmx 超时时间，单位秒。当执行jmx时间超过RUN_TIME+RUN_JMX_TIMEOUT 时会强制终止执行
+RUN_JMX_TIMEOUT=600
+# 线程启动时间
+RAMP_UP_PERIOD=1
+# 集群名称
+REGION_NAME=performance
+# 标签域名，一般为cpaas.io(acp 2.14开始变量名称由GROUP改为LABELBASEDOMAIN)
+LABELBASEDOMAIN=cpaas.io
+#测试项目名称
+PRO_NAME=project-1
+#测试命名空间名称
+NS_NAME=project-1-ns-1
+#并发创建应用镜像地址
+IMAGE=build-harbor.alauda.cn/automation/qaimages:helloworld
+#并发获取应用详情的应用名称
+APP_NAME=fake-perf-00001
+#并发获取部署详情的部署名称
+DEPLOY_NAME=deploy-100-app-deploy0
+#并发获取configmap详情的configmap名称
+CM_NAME=configmap-00001
+#并发获取service详情的service名称
+SVC_NAME=deploy-100-app-service0
+#并发获取ingress详情的ingress名称
+INGRESS_NAME=deploy-100-app-ingress0
+#并发获取节点详情的节点名称
+NODE_NAME=<node ip>
+#并发创建应用pod节点选择器标签
+NODE_SELECTOR="fakenode":""
+#alb名称
+ALB_NAME=alb2
+ 
+visit_app_by_alb_default_svc_url=
+visit_app_by_alb_multy_svc_url=
+ 
+#性能测试测试容器扩缩容 pod 节点污点容忍的key
+toleration_key=fakenode
+# 项目名称前缀
+PROJECT_PREFIX=project
+# jenkins 工具链名称，假如不存在时会创建
+JENKINS_NAME=jenkins
+# 流水线名称
+PIPELINE_NAME=project-1-pipeline-1
+# gitlab 访问地址
+GITLAB_URL=<gitlab url>
+# gitlab 仓库名称
+GITLAB_REPO=go-test-1
+# gitlab 仓库组名
+GITLAB_ACCOUNT=root
+# gitlab 凭据名称
+GITLAB_SECRET_NAME=gitlab-global
+# gitlab 工具链名称
+GITLAB_NAME=gitlab-perf
+# harbor 访问地址
+HARBOR_URL=<harbor url>
+# harbor 仓库项目名称
+HARBOR_PROJECT=library
+ 
+IMAGE_REGISTRY_NAME=perf-harbor-library-project-1-pipeline-1
+# harbor工具链名称，假如不存在时会创建
+HARBOR_NAME=harbor
+# harbor 镜像仓库
+HARBOR_REPOSITORY=project-1-pipeline-1
+ 
+visit_app_by_asm_service_url=
+visit_app_by_asm_gateway_url=
+ 
+ 
+# 邮箱收件人
+RECIPIENTS=<username@xx.xx>
+#测试报告邮件标题
+EMAIL_TITLE=
+#测试报告邮件中是否包含附件。（因附件过大，不建议发送附件）
+EMAIL_ATTACH=false
+# jmeter堆内存设置
+HEAP=-Xms1g -Xmx25g -XX:MaxMetaspaceSize=512m
+#用户思考时间（暂时没有用到）
+PAUSE_TIME=1
+# 邮箱服务器端口
+SMTP_PORT=587
+# 邮箱服务器
+SMTP_HOST=Smtp.office365.com
+# 发件人账号
+SMTP_USERNAME=<username@xx.xx>
+#发送测试报告邮箱密码
+SMTP_PASSWORD=<pasword>
+# 发件人邮箱，一般与发件人账号一致
+EMAIL_FROM=<username@xx.xx>
+# 邮件是否加密
+SMTP_SSL=starttls
+# 是否发送监控数据
+SEND_METRICS=false
+# pushgateway地址
+PUSH_GATE_WAY=
+# 监控metrics job名称
+METRICS_JOB_NAME=stability
+# 监控标签和测试数据索引
+METRICS_NAME_AND_INDEX={label}:Error %,{label}:95% Line,{label}:99% Line
+# 测试用例级别
+LEVELS=L0,L1,L2,L3
+# 是否将jtl内容发送到logstash中，默认关闭即可
+SEND_JTL_TO_LOGSTASH=false
+# logstash 地址
+LOGSTASH_HTTP_URL=
+6运行devops 性能测试时保存如下环境变量
+# 平台访问协议
+API_TYPE=https
+# 平台访问地址
+API_IP=<平台地址>
+# 平台访问端口
+API_PORT=443
+# 集群名称
+REGION_NAME=performance
+# 项目名称
+PRO_NAME=project-1
+# 平台管理员用户
+ACCOUNT=
+# 平台管理员密码
+PASSWORD=password
+# 用户为本地用户，支持ldap用户
+AUTH=local
+# 高并发case 并发数
+THREAD_NUM=100
+# 管理视图低并发case 并发数
+L1_THREAD_NUM=10
+# 执行流水线 case 并发数
+L3_THREAD_NUM=10
+# 线程启动时间
+RAMP_UP_PERIOD=1
+# 执行测试时间
+RUN_TIME=300
+# 平台标签域名
+LABELBASEDOMAIN=cpaas.io
+# jenkins 访问地址
+JENKINS_URL=<Jenkins url>
+# jenkins凭据名称
+JENKINS_SECRET_NAME=jenkins-secret
+# jenkins 工具链名称，假如不存在时会创建
+JENKINS_NAME=
+# jenkins用户名称
+JENKINS_USERNAME=admin
+# jenkins 用户 token
+JENKINS_TOKEN=<jenkins token>
+# harbor工具链名称，假如不存在时会创建
+HARBOR_NAME=harbor-registry
+# harbor 访问地址。
+HARBOR_URL=<harbor url>
+# harbor凭据名称
+HARBOR_SECRET_NAME=
+# harbor 用户名
+HARBOR_USERNAME=admin
+# harbor 密码
+HARBOR_PASSWORD=
+# harbor 仓库项目名称
+HARBOR_PROJECT=library
+# harbor 镜像仓库
+HARBOR_REPOSITORY=project-1-pipeline-1
+# gitlab 访问地址
+GITLAB_URL=<gitlab url>
+# gitlab 工具链名称
+GITLAB_NAME=
+# gitlab 凭据名称
+GITLAB_SECRET_NAME=
+# gitlab 用户名
+GITLAB_USERNAME=root
+# gitlab 仓库组名
+GITLAB_ACCOUNT=root
+# gitlab token
+GITLAB_TOKEN=<gitlab token>
+# gitlab 仓库名称
+GITLAB_REPO=
+# 项目数量
+PROJECT_NUMBER=2
+# 项目名称前缀
+PROJECT_PREFIX=devops
+ 
+#----- 下面是性能稳定性测试框架所需环境变量------
+# 执行测试时间，性能测试默认是1
+RUN_TEST_TIME=1
+# 测试报告 webhook token
+REPORT_WEBHOOK_TOKEN=
+# 测试日志存放路径，一般无需改动
+REPORT_DIR=/home/data/result
+# jmeter jmx 名称
+JMETER_JMX_NAME=/performance/testcases/TestACP2.10/exec_devops_pipeline.jmx,/performance/testcases/TestACP2.10/get_devops_pipeline_history_details.jmx,/performance/testcases/TestACP2.10/get_devops_secret_details.jmx,/performance/testcases/TestACP2.10/list_devops_coderepository.jmx,/performance/testcases/TestACP2.10/list_devops_global_secret.jmx,/performance/testcases/TestACP2.10/list_devops_imagerepository.jmx,/performance/testcases/TestACP2.10/list_devops_imagerepository_tags.jmx,/performance/testcases/TestACP2.10/list_devops_pipeline.jmx,/performance/testcases/TestACP2.10/list_devops_pipeline_historys.jmx,/performance/testcases/TestACP2.10/list_devops_secret.jmx,/performance/testcases/TestACP2.10/list_devops_toolchain.jmx
+# 执行jmx 超时时间，单位秒。当执行jmx时间超过RUN_TIME+RUN_JMX_TIMEOUT 时会强制终止执行
+RUN_JMX_TIMEOUT=300
+# 邮箱收件人
+RECIPIENTS=<username@xx.xx>
+# 邮件标题
+EMAIL_TITLE=
+# 邮箱服务器
+SMTP_HOST=Smtp.office365.com
+# 邮箱服务器端口
+SMTP_PORT=587
+# 发件人账号
+SMTP_USERNAME=<username@xx.xx>
+# 邮箱密码
+SMTP_PASSWORD=password
+# 发件人邮箱，一般与发件人账号一致
+EMAIL_FROM=<username@xx.xx>
+# 是否发送附件，为防止发送失败，需关闭
+EMAIL_ATTACH=false
+# 邮件是否加密
+SMTP_SSL=starttls
+# jmeter堆内存设置
+HEAP=-Xms2g -Xmx20g -XX:MaxMetaspaceSize=256m
+# 是否发送监控数据
+SEND_METRICS=false
+# pushgateway地址
+PUSH_GATE_WAY=
+# 监控metrics job名称
+METRICS_JOB_NAME=stability
+# 监控标签和测试数据索引
+METRICS_NAME_AND_INDEX=stability_{label}_ERROR:Error %,stability_{label}_Line_95_percent:95% Line
+# 测试用例级别
+LEVELS=L0,L1,L2,L3
+# 是否将jtl内容发送到logstash中，默认关闭即可
+SEND_JTL_TO_LOGSTASH=false
+# logstash 地址
+LOGSTASH_HTTP_URL=
+7将测试脚本存放到测试发起机器
+测试脚本见标准交付文档库
+8将start.sh脚本保存到测试发起机器并追加755权限
+需将脚本文件第三行image指定的镜像拉下来上传到项目本地镜像仓库，然后指向项目本地镜像仓库地址
+start.sh
+#!/bin/bash
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin
+image=build-harbor.alauda.cn/automation/stability:release-4.2
+ 
+LOGFILE=/var/log/mtbf.log
+if [ -f ${LOGFILE} ] && [ $(ls -l ${LOGFILE} | awk '{ print $5 }') -gt $((1024*1024*10)) ] ; then >${LOGFILE} ; fi
+exec &> >(tee -a $LOGFILE)
+exec 2>&1
+ 
+function logger(){
+    local r_code=$?
+    echo -e "`date "+%Y-%m-%d %H:%M:%S.%N"|grep -Po '.{1,}\.\d{3}'` $@"
+    return $r_code
+}
+ 
+function help_info(){
+cat <<EOF
+start.sh parameter usage:
+ 
+-N  --name             docker container's name.
+    --jmxfile          jmeter jmx file.
+    --envfile          The file is used to mount environment variables to the container.
+    --args             Docker run command arguments.
+-D  --diagnosefile     The diagnose csv file is to be mounted to the container.
+-R  --reportdir        The directory is mounted to the container to store the test log.
+-V  --volume           Mount a file or directoty to docker container.
+    --cmd              execute command in container.
+    --status           Get container status of test.
+-H  --help
+EOF
+exit 0
+}
+ 
+function get_status(){
+    if [ ! "`docker ps -a -f name=^/${1}$ --format '{{.ID}}'`" == "" ];then
+        docker inspect $(docker ps -a -f name=^/${1}$ --format '{{.ID}}') --format '{{.State.Status}}'
+    else
+        echo "null"
+    fi
+    exit 0
+}
+ 
+function init_config(){
+    : "${c_name:="mtbf"}"
+    : "${envfile:="/home/jmeter-mtbf.env"}"
+    : "${diagnosefile:="null"}"
+    : "${reportdir:="/home/report"}"
+ 
+    DIAGNOSE_CSV_FILE=`grep -o "^DIAGNOSE_CSV_FILE=\(.\)*$" ${envfile} |sed 's/.*=\(.*\)/\1/g'`
+    REPORT_DIR=`grep -o "^REPORT_DIR=\(.\)*$" ${envfile} |sed 's/.*=\(.*\)/\1/g'`
+ 
+    : "${DIAGNOSE_CSV_FILE:="/stability/diagnose.csv"}"
+    : "${REPORT_DIR:="/home/report"}"
+ 
+    VOLUME_ARGS="-v ${reportdir}:${REPORT_DIR}"" ${volumes}"
+    if [ "${diagnosefile}" != "null" ];then
+        VOLUME_ARGS="-v ${diagnosefile}:${DIAGNOSE_CSV_FILE} ""${VOLUME_ARGS}"
+    fi
+ 
+    if [ -n "${jmxfile}" ];then
+        JMX_FILE_CONF=$(grep -o "^JMETER_JMX_NAME=\(.\)*$" ${envfile})
+        if [ -n "${JMX_FILE_CONF}" ];then
+            sed -i 's#^JMETER_JMX_NAME=.*$#JMETER_JMX_NAME='${jmxfile}'#g' ${envfile}
+        else
+            sed -i '$a\JMETER_JMX_NAME='${jmxfile}'' ${envfile}
+        fi
+        ENV_ARGS="-e JMETER_JMX_NAME=${jmxfile}"
+    fi
+ 
+    if [ -n "${cmd}" ]; then
+        mode="-ti"
+    else
+        mode="-dti"
+    fi
+}
+ 
+function backup_jtl(){
+    if [ ! -d "/home/testlog/" ]; then
+        logger "mkdir /home/testlog"
+        mkdir /home/testlog/
+    fi
+    if [[ -f "${reportdir}/stability.jtl" ]] && [[ -z "${cmd}" || "${cmd}" == "python3.5 jmeter_runner.py" ]];then
+        logger "mv ${reportdir}/stability.jtl /home/testlog/${c_name}-stability-$(date "+%Y-%m-%d-%H-%M").jtl"
+        mv ${reportdir}/stability.jtl /home/testlog/${c_name}-stability-$(date "+%Y-%m-%d-%H-%M").jtl
+    fi
+}
+ 
+function run_test(){
+    backup_jtl
+    logger "docker run ${mode} --name ${c_name} --env-file ${envfile} ${ENV_ARGS} ${args} ${VOLUME_ARGS} ${image} ${cmd}"
+    logger `docker run ${mode} --name ${c_name} --env-file ${envfile} ${ENV_ARGS} ${args} ${VOLUME_ARGS} ${image} ${cmd}`
+}
+ 
+function main(){
+    init_config
+    loop_run=0
+    while [ $loop_run -le 30 ]
+    do
+        container_status=$(get_status $c_name)
+        if [ "${container_status}" == "running" ]; then
+            logger "container ${c_name} is still running. sleep 600s"
+            sleep 10m
+            let loop_run+=1
+        elif [ "${container_status}" == "null" ]; then
+            run_test
+            loop_run=31
+        else
+            logger "${c_name} is stoped, start delete it."
+            logger "docker rm ${c_name}"
+            logger `docker rm  ${c_name}`
+            if [ $?==0 ];then
+                run_test
+                loop_run=31
+            fi
+        fi
+    done
+}
+ 
+ARGS=`getopt -o N:,D:,R:,V:,H --long name:,envfile:,diagnosefile:,reportdir:,jmxfile:,volume:,args:,cmd:,status:,help -- "$@"`
+if [ $? != 0 ] ; then logger "Terminating..." >&2 ; exit 1 ; fi
+eval set -- "$ARGS"
+while true;do
+    case "$1" in
+     -N|--name) c_name=$2
+         shift ;;
+     --envfile) envfile=$2
+         shift ;;
+     --args) args="${args}""$2 "
+         shift ;;
+     -D|--diagnosefile) diagnosefile=$2
+         shift ;;
+     -R|--reportdir) reportdir=$2
+         shift;;
+     -V|--volume) volumes="${volumes}""-v $2 "
+         shift;;
+     -H|--help) help_info
+         shift;;
+     --cmd) cmd=$2
+         shift;;
+     --jmxfile) jmxfile=$2
+         shift;;
+     --status) get_status $2
+         shift
+         break;;
+     --) shift
+         break;;
+     *) logger "wrong parameter ${1}"
+         shift
+         break ;;
+    esac
+    shift
+done
+ 
+main "$@"
+
+
+start.sh脚本参数解释：
+[root@stability ~]# /home/start.sh -H
+start.sh parameter usage:
+ 
+-N  --name             docker container's name.
+--jmxfile          jmeter jmx file.
+--envfile          The file is used to mount environment variables to the container.
+--args             Docker run command arguments.
+-D  --diagnosefile     The diagnose csv file is to be mounted to the container.
+-R  --reportdir        The directory is mounted to the container to store the test log.
+-V  --volume            Mount a file or directoty to docker container.
+--cmd              execute command in container.
+--status           Get container status of test.
+-H  --help
+
+--name 测试容器名称 默认mtbf
+--jmxfile 指定跑哪个jmx文件，指定时会覆盖环境变量中的JMETER_JMX_NAME的值
+--envfile 指定挂载环境变量文件 默认/home/jmeter-mtbf.env
+--args 指定docker 运行参数 如： --args '-network=host'
+--diagnosefile 废弃 指定挂载一个文件到容器中
+--reportdir 指定测试报告在宿主机的存放路径 默认/home/report
+--volume 挂载一个目录到容器中 如：-volume /home/user.properties: /jmeter/apache-jmeter-5.2.1/bin/user.properties
+-cmd 指定容器运行命令 如：-cmd 'sh' 可以exec到容器中
+--status 获取性能测试容器状态  --help 查看帮助信息
+注：强烈建议所有文件都放到/home下，env文件保存到/home/jmeter-mtbf.env执行测试时可以省去很多参数。
+9运行性能测试
+运行start.sh脚本并将测试jmx脚本挂载到容器中
+/home/start.sh --volum /home/staging2.10/:/performance/testcases/TestACP2.10/
+10注意事项
+1.测试报告默认存放在/home/report/report.csv
+2.所有的jmx文件执行完才会生成report.csv
+3.测试jtl文件默认存放在/home/report/stability.jtl
+4.每次运行测试会自动将上次测试jtl文件备份到/home/testlog下并打上当前的时间戳。
+5.测试镜像使用的jmeter版本为5.2.1
+6.第二次执行创建更新删除资源（deployment,svc,ingress,configmap）用例时需先执行以下命令清理一下测试数据：
+
+kubectl delete service -n project-1-ns-1 --selector=perf-create-update-delete=yes
+kubectl delete configmap -n project-1-ns-1  --selector=perf-create-update-delete=yes
+kubectl delete deployment -n project-1-ns-1  --selector=perf-create-update-delete=yes
+kubectl delete ingress -n project-1-ns-1  --selector=perf-create-update-delete=yes
+1.测试报告默认存放在/home/report/report.csv
+2.所有的jmx文件执行完才会生成report.csv
+3.测试jtl文件默认存放在/home/report/stability.jtl
+4.每次运行测试会自动将上次测试jtl文件备份到/home/testlog下并打上当前的时间戳。
+5.测试镜像使用的jmeter版本为5.2.1
+6.第二次执行创建更新删除资源（deployment,svc,ingress,configmap）用例时需先执行以下命令清理一下测试数据：
+
+kubectl delete service -n project-1-ns-1 --selector=perf-create-update-delete=yes
+kubectl delete configmap -n project-1-ns-1  --selector=perf-create-update-delete=yes
+kubectl delete deployment -n project-1-ns-1  --selector=perf-create-update-delete=yes
+kubectl delete ingress -n project-1-ns-1  --selector=perf-create-update-delete=yes
+11清理测试数据
+/home/start.sh --jmxfile /performance/testcases/TestACP2.14/medium-teardown-acp3.6.jmx --envfile /home/jmeter-mtbf.env 
+
+注意：这里的env文件与准备性能测试数据的env是同一个文件，start.sh文件与准备性能测试数据保持一致
