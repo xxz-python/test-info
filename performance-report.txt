@@ -1,0 +1,132 @@
+Command - ingress
+cd /root/performance/ingress/
+docker run -d --rm --env-file=envfile --net=host -v /root/performance/result/ingress:/home/data  registry.alauda.cn:60070/automation/stability:release-4.2
+
+---
+---
+
+prep
+
+
+
+replicas =2
+resource: CPU 2core + Memeory2G
+--
+
+
+
+1)
+
+workflow( explain)
+
+2)
+API_IP=192.168.176.48
+API_PORT=443
+API_TYPE=https
+RUN_TIME=600
+
+ACCOUNT=admin
+PASSWORD=1qaz@WSX
+THREAD_NUM=100
+
+
+3)
+expected result:
+100 thread num, runtime 10min:(confirmed)
+     the respose time
+             95% < 1000ms
+     error = 0%
+     fail =0   
+
+
+4)
+RUN
++ from jtl to html [once]
+copy 
+	jmeter -g stability.jtl -o ./Resultreport
+
+
+5) result
+image
+
+
+
+
+---
+[standard]
+
+deploy-
+
+ add_deployment (del update)
+ 95% <1000ms 
+ error 0%
+ fail 0
+
+
+
+# cat /root/performance/deployment/envfile
+
+JMETER_JMX_NAME=/performance/testcases/TestACP2.10/post_put_delete_deployment.jmx
+REPORT_DIR=/home/data/result
+API_IP=acp-console.uat.dbs.com
+API_PORT=443
+API_TYPE=https
+AUTH=local
+IMAGE=harbor.acpglobal.uat.dbs.com/library/nginx:1.23  #
+RUN_TIME=300 #
+RUN_TEST_TIME=1 
+ACCOUNT=admin 
+PASSWORD=Alaudauat@123
+THREAD_NUM=50
+RAMP_UP_PERIOD=1
+REGION_NAME=acp2b #
+PRO_NAME=test
+NS_NAME=test-ns1 #
+APP_NAME=test-00001
+DEPLOY_NAME=test-00001
+CM_NAME=configmap-00001
+SVC_NAME=test-00001
+INGRESS_NAME=ingress-00001
+SLEEP=30
+toleration_key=fakenode
+NODE_NAME=master01
+RECIPIENTS=pengjia@alauda.io
+EMAIL_TITLE=staging_acp_api_200threads_performance
+EMAIL_ATTACH=false
+PAUSE_TIME=1
+SMTP_USERNAME=jia18513519889@163.com
+SMTP_PASSWORD=jia123
+EMAIL_FROM=jia18513519889@163.com
+SMTP_HOST=smtp.163.com
+SMTP_PORT=465
+SMTP_SSL=True
+L3_THREAD_NUM=50 #
+
+
+--ingress
+
+
+JMETER_JMX_NAME=/performance/testcases/TestACP2.10/visit_app.jmx
+REPORT_DIR=/home/data/result
+APP_URL=http://nginx-demo.acp2b.uat.dbs.com # ingress exposure address
+APP_DOMAIN=nginx-demo.acp2b.uat.dbs.com # domain name
+THREAD_NUM=500 # bingfa
+RUN_TIME=600 # 
+RAMP_UP_PERIOD=1
+
+
+ Transactions Per Second
+
+[]
+Under 2replicas, 2C 2G -
+   TPS >  ()
+
+
+
+
+---
+
+
+MicroOS,
+want to manage PID
+PID is (only) root.
