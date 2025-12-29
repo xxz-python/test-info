@@ -24,6 +24,8 @@ fio --name=randwrite --directory=/home/test-multi --rw=randwrite --bs=2M --size=
 fio --name=multifile --directory=/home/test-multi --rw=randwrite --bs=2M --size=1G --numjobs=8 --filesize=1G --numfiles=8 --ioengine=libaio --iodepth=32 --direct=1 --group_reporting
  
 
+fio --name=multifile --directory=/home/test-multi --rw=randwrite --bs=2M --size=1G --numjobs=8 --filesize=1G --nrfiles=8 --ioengine=libaio --iodepth=32 --direct=1 --group_reporting
+
 umount /home/test-single
 umount /home/test-multi
 
