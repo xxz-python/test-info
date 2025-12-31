@@ -1,0 +1,16 @@
+Summary list:
+
+1. prepare
+Application preparation:
+Nginx
+replicas =2
+resource: CPU 2core, Memory 2G
+--
+
+
+2. test
+# envfile
+
+
+3. generate report
+# from jtl to ResultReport/
