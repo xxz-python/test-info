@@ -1,0 +1,45 @@
+Summary: Do nfs performance testing.
+
+---
+Information from storageclass:
+NFS:  10.52.31.5:/hwnfs_ACP_226300
+--
+# 在将来要安装Clickhouse的节点上执行测试
+# 需要在节点上安装fio
+# 需要将NFS的地址替换给你们环境的
+# 最终将测试输出的内容截图发出来
+mkdir /root/test-single
+mkdir /root/test-multi
+ 
+# mount -t nfs  -o vers=4.2,nconnect=8  10.52.31.5:/nfs/test-multi  /root/test-multi
+# mount -t nfs  -o vers=4.2,nconnect=1  10.52.31.5:/nfs/test-single  /root/test-single
+# Due to current nfs is v3, remove parameter "vers=4.2"
+mount -t nfs  -o nconnect=8  10.52.31.5:/hwnfs_ACP_226300  /root/test-multi
+mount -t nfs  -o nconnect=1  10.52.31.5:/hwnfs_ACP_226300  /root/test-single
+ 
+fio --name=test --directory=/root/test-multi --rw=write --bs=1M --size=1G --numjobs=8 --direct=1 --group_reporting
+ 
+fio --name=test --directory=/root/test-single --rw=write --bs=1M --size=1G --numjobs=8 --direct=1 --group_reporting
+ 
+fio --name=randwrite --directory=/root/test-multi --rw=randwrite --bs=2M --size=4G --numjobs=8 --ioengine=libaio --iodepth=32 --direct=1 --group_reporting
+
+fio --name=multifile --directory=/root/test-multi --rw=randwrite --bs=2M --size=1G --numjobs=8 --filesize=1G --nrfiles=8 --ioengine=libaio --iodepth=32 --direct=1 --group_reporting
+
+
+umount /root/test-single
+umount /root/test-multi
+
+
+  ---
+# 如果有条件可以测试下网络带宽
+# 在要安装Clickhouse的节点上测试
+# 需要在测试节点和NFS的节点上都安装iperf3 
+# 测试结果截图发出来就可以
+
+# NFS节点上启动iperf3服务端
+iperf3 -s
+
+
+# Clickhouse测试节点上启动客户端
+iperf3 -c <服务器IP>
+
