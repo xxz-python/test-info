@@ -1,0 +1,136 @@
+v3.5.21-251117
+1.12.4-v4.2.2
+
+node.kubernetes.io/unschedulable
+
+node-role.kubernetes.io/infra
+reserved
+
+
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+- providers:
+  - aesgcm:
+      keys:
+      - name: "6"
+        secret: E6iJ6FQ1yJPMi77V6Qw6cDh3FOq660NT2RO61zsgjxo=
+  - identity: {}
+  - aesgcm:
+      keys:
+      - name: "5"
+        secret: WfNn4II+1mZdzjqgsU2WoSupK+7F6noYHfqmTlHJnSk=
+  - aesgcm:
+      keys:
+      - name: "4"
+        secret: OgmzVGhSN3N67KHuWpVgHDQzkD/GeyeUrt1j0jwGVHI=
+  - aesgcm:
+      keys:
+      - name: "3"
+        secret: qQHRYrVvPlH5GHH69km7DRLZoFunlwXc9xoZ4NiKKv4=
+  - aesgcm:
+      keys:
+      - name: "2"
+        secret: FzM1Nb3RwsJHfLCAL2iYPGLs6fZJyqmPJIWhtTGjg54=
+  - aesgcm:
+      keys:
+      - name: "1"
+        secret: WYt4RzxbbN4aKU9LNwjttwpk9TNDeU4hKh6dkUUXBHY=
+  - aescbc:
+      keys:
+      - name: key1
+        secret: 3udSs4eXILckbtXZ4C8Sx0hWJpQhRDA7mGjiGZEQhWc=
+  resources:
+  - secrets
+  - configmaps
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- providers:
+  - aesgcm:
+      keys:
+      - name: "6"
+        secret: Ps+3JQllYzZ0D9W7JfvpTh3eu32L39/Qv5Rg9yYHrVo=
+  - identity: {}
+  - aesgcm:
+      keys:
+      - name: "5"
+        secret: F1VKUFOTCyBOhN1bjZAZb+44lmcg/yBE6YrBvTRdvYo=
+  - aesgcm:
+      keys:
+      - name: "4"
+        secret: morFJS2mYhzbG56DHlliE0inENtQcwH6DGtHUiwl3DU=
+  - aesgcm:
+      keys:
+      - name: "3"
+        secret: briii7dSj7PppdvxsH1AEymQlUg6I/18KSFmwLXXU3U=
+  - aesgcm:
+      keys:
+      - name: "2"
+        secret: PY87oegCQBE215G1krq9Lj7Vll3ZnU8+GqB/JIiqayc=
+  - aesgcm:
+      keys:
+      - name: "1"
+        secret: gkGNP/0Pj+2BUhsku+LX6Fs6y0JEaHXun0UG93tr5Pk=
+  - aescbc:
+      keys:
+      - name: key1
+        secret: 3udSs4eXILckbtXZ4C8Sx0hWJpQhRDA7mGjiGZEQhWc=
+  resources:
+  - secrets
+  - configmaps
+
+
+
+
+
+
+
+- providers:
+  - aesgcm:
+      keys:
+      - name: "6"
+        secret: MXKhD9fybYTrOfP7kl54QDjXZL9raouK0U4VMooAQc0=
+  - identity: {}
+  - aesgcm:
+      keys:
+      - name: "5"
+        secret: VSpAFlNPdh71ilKKKDk/tQnZYu6S3SKW5oToYPuk5nI=
+  - aesgcm:
+      keys:
+      - name: "4"
+        secret: 8fSQ0vP4uENE/tOXJRlgUAHYSbOroFrjmr19f24t/XY=
+  - aesgcm:
+      keys:
+      - name: "3"
+        secret: kQRM13F4x7RcuZt8McmilIpAV2eJ1Cqx/kGPW6pGz0M=
+  - aesgcm:
+      keys:
+      - name: "2"
+        secret: z2XOb3y7phpBiohXsOjbLTEQvpvQ2oOmdL9djwKRJKo=
+  - aesgcm:
+      keys:
+      - name: "1"
+        secret: IKquOkHLZzdT9DUeDFN/lRHck4Ct5KLPtdGwI6BUxWU=
+  - aescbc:
+      keys:
+      - name: key1
+        secret: 3udSs4eXILckbtXZ4C8Sx0hWJpQhRDA7mGjiGZEQhWc=
+  resources:
+  - secrets
+  - configmaps
