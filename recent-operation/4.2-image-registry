@@ -1,0 +1,36 @@
+# Summary: After platform upgrade from 4.1 to 4.2, we uninstall registry 4.1, and install 4.2. 
+
+---
+
+1. Backup Old Plugin Configuration: (Execute in workload cluster where the old plugin is installed)
+$ kubectl get clusterplugininstances internal-docker-registry -o yaml > backup-clusterplugininstances.yaml
+
+2. Uninstall Old Plugin: (Execute in Global cluster)
+# Replace <CLUSTER-NAME> with actual cluster name which has the plugin installed
+$ kubectl get moduleinfo -l cpaas.io/cluster-name=<CLUSTER-NAME>,cpaas.io/module-name=internal-docker-registry -o name | xargs kubectl delete
+
+3. Install New Plugin (Execute in workload cluster where the plugin will be installed)
+3.1 Edit backup file backup-clusterplugininstances.yaml, replace all internal-docker-registry with image-registry
+3.2 Apply new configuration:
+$ kubectl apply -f backup-clusterplugininstances.yaml
+
+4. Cleanup Old Plugin From [Marketplace/Cluster Plugins]: (Execute in Global cluster)
+$ kubectl delete moduleplugins internal-docker-registry
+$ kubectl get moduleconfig -l cpaas.io/module-name=internal-docker-registry -o name | xargs kubectl delete
+
+
+
+# patch registry 
+kubectl patch deployment -n cpaas-system image-registry \
+--type='merge' \
+-p='{"spec":{"template":{"spec":{"nodeSelector":{"registry":""}}}}}'
+
+# add tolerations
+kubectl edit deployment -n cpaas-system image-registry
+spec:
+  template:
+    spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/infra"
+        operator: "Exists"
+        effect: "NoSchedule"
