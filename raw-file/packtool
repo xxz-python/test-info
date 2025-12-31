@@ -1,0 +1,5 @@
+"${PACKTOOL}" image cp -a "${ARCH}" "docker://${REGISTRY}/${docker_repo}:${docker_tag}" "${docker_tar_src}" "${docker_tar}"
+
+
+
+packtool image cp -a "amd64"  "docker://${REGISTRY}/${docker_repo}:${docker_tag}" "${docker_tar_src}" "${docker_tar}"
