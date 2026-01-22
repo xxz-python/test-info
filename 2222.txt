@@ -1,0 +1,38 @@
+{
+  "Level": "Metadata",
+  "AuditID": "82fb7421-465c-4390-b219-9295b06dcd53",
+  "Stage": "ResponseComplete",
+  "RequestURI": "/auth/v1/users/fe01ce2a7fbac8fafaed7c982a04e229",
+  "Verb": "patch",
+  "User": {
+    "username": "admin"
+  },
+  "ImpersonatedUser": null,
+  "SourceIPs": [
+    "10.52.236.7",
+    "10.52.236.3"
+  ],
+  "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+  "ObjectRef": {
+    "Resource": "users",
+    "Namespace": "",
+    "Name": "fe01ce2a7fbac8fafaed7c982a04e229",
+    "UID": "",
+    "APIGroup": "auth.alauda.io",
+    "APIVersion": "v1",
+    "ResourceVersion": "",
+    "Subresource": ""
+  },
+  "ResponseStatus": {
+    "metadata": {},
+    "status": "Success",
+    "code": 200
+  },
+  "RequestObject": {},
+  "ResponseObject": {},
+  "RequestReceivedTimestamp": "2026-01-22T15:44:23.579261Z",
+  "StageTimestamp": "2026-01-22T15:44:23.638769Z",
+  "Annotations": null,
+  "Cluster": "global",
+  "ReferObject": "fe01ce2a7fbac8fafaed7c982a04e229"
+}
