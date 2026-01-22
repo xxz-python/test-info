@@ -1,0 +1,174 @@
+{
+  "kind": "Event",
+  "apiVersion": "audit.k8s.io/v1",
+  "Level": "RequestResponse",
+  "AuditID": "6a415342-801a-43a1-9579-4f7c03b9305b",
+  "Stage": "ResponseComplete",
+  "RequestURI": "/apis/auth.alauda.io/v1/userbindings",
+  "Verb": "create",
+  "User": {
+    "username": "system:serviceaccount:cpaas-system:k8sadmin",
+    "uid": "e662cbca-ac16-42c4-8697-537c816824c3",
+    "groups": [
+      "system:serviceaccounts",
+      "system:serviceaccounts:cpaas-system",
+      "system:authenticated"
+    ]
+  },
+  "ImpersonatedUser": {
+    "username": "admin",
+    "groups": [
+      "system:authenticated"
+    ]
+  },
+  "SourceIPs": [
+    "192.168.0.202",
+    "192.168.1.5"
+  ],
+  "UserAgent": "apollo/UNKNOWN",
+  "ObjectRef": {
+    "Resource": "userbindings",
+    "Namespace": "",
+    "Name": "",
+    "UID": "",
+    "APIGroup": "auth.alauda.io",
+    "APIVersion": "v1",
+    "ResourceVersion": "",
+    "Subresource": ""
+  },
+  "ResponseStatus": {
+    "metadata": {},
+    "code": 201
+  },
+  "RequestObject": {
+    "apiVersion": "auth.alauda.io/v1",
+    "kind": "UserBinding",
+    "metadata": {
+      "annotations": {
+        "auth.cpaas.io/role.display-name": "开发人员",
+        "auth.cpaas.io/user.email": "demo",
+        "cpaas.io/current-cluster": "global"
+      },
+      "creationTimestamp": null,
+      "generateName": "fe01ce2a7fbac8fafaed7c982a04e229-",
+      "labels": {
+        "auth.cpaas.io/role.level": "namespace",
+        "auth.cpaas.io/role.name": "namespace-developer-system",
+        "auth.cpaas.io/user.email": "fe01ce2a7fbac8fafaed7c982a04e229",
+        "cpaas.io/cluster": "acpsit1",
+        "cpaas.io/namespace": "test-javier",
+        "cpaas.io/project": "test"
+      }
+    },
+    "spec": {
+      "constraint": [
+        {
+          "cluster": "acpsit1",
+          "namespace": "test-javier",
+          "project": "test"
+        }
+      ],
+      "roleRef": "namespace-developer-system",
+      "scope": "namespace",
+      "subjects": [
+        {
+          "kind": "User",
+          "name": "demo"
+        }
+      ]
+    },
+    "status": {}
+  },
+  "ResponseObject": {
+    "apiVersion": "auth.alauda.io/v1",
+    "kind": "UserBinding",
+    "metadata": {
+      "annotations": {
+        "auth.cpaas.io/role.display-name": "开发人员",
+        "auth.cpaas.io/user.email": "demo",
+        "cpaas.io/creator": "admin",
+        "cpaas.io/current-cluster": "global",
+        "cpaas.io/updated-at": "2026-01-22T15:40:36Z"
+      },
+      "creationTimestamp": "2026-01-22T15:40:36Z",
+      "generateName": "fe01ce2a7fbac8fafaed7c982a04e229-",
+      "generation": 1,
+      "labels": {
+        "auth.cpaas.io/role.level": "namespace",
+        "auth.cpaas.io/role.name": "namespace-developer-system",
+        "auth.cpaas.io/user.email": "fe01ce2a7fbac8fafaed7c982a04e229",
+        "cpaas.io/cluster": "acpsit1",
+        "cpaas.io/namespace": "test-javier",
+        "cpaas.io/project": "test"
+      },
+      "managedFields": [
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "fieldsType": "FieldsV1",
+          "fieldsV1": {
+            "f:metadata": {
+              "f:annotations": {
+                ".": {},
+                "f:auth.cpaas.io/role.display-name": {},
+                "f:auth.cpaas.io/user.email": {},
+                "f:cpaas.io/current-cluster": {}
+              },
+              "f:generateName": {},
+              "f:labels": {
+                ".": {},
+                "f:auth.cpaas.io/role.level": {},
+                "f:auth.cpaas.io/role.name": {},
+                "f:auth.cpaas.io/user.email": {},
+                "f:cpaas.io/cluster": {},
+                "f:cpaas.io/namespace": {},
+                "f:cpaas.io/project": {}
+              }
+            },
+            "f:spec": {
+              ".": {},
+              "f:constraint": {},
+              "f:roleRef": {},
+              "f:scope": {},
+              "f:subjects": {}
+            }
+          },
+          "manager": "apollo",
+          "operation": "Update",
+          "time": "2026-01-22T15:40:36Z"
+        }
+      ],
+      "name": "fe01ce2a7fbac8fafaed7c982a04e229-ztblk",
+      "resourceVersion": "112411875",
+      "uid": "efad15f5-5519-44a1-8610-ab57fe7db943"
+    },
+    "spec": {
+      "constraint": [
+        {
+          "cluster": "acpsit1",
+          "namespace": "test-javier",
+          "project": "test"
+        }
+      ],
+      "roleRef": "namespace-developer-system",
+      "scope": "namespace",
+      "subjects": [
+        {
+          "kind": "User",
+          "name": "demo"
+        }
+      ]
+    }
+  },
+  "RequestReceivedTimestamp": "2026-01-22T15:40:36.396500Z",
+  "StageTimestamp": "2026-01-22T15:40:36.420942Z",
+  "Annotations": {
+    "authentication.k8s.io/legacy-token": "system:serviceaccount:cpaas-system:k8sadmin",
+    "authentication.k8s.io/legacy-token-manual-secret": "k8sadmin-20260122095519",
+    "authorization.k8s.io/decision": "allow",
+    "authorization.k8s.io/reason": "RBAC: allowed by ClusterRoleBinding \"cpaas:platform-admin-313941461f16a6e979f930a4a5da4f7b\" of ClusterRole \"cpaas:platform-admin\" to User \"admin\"",
+    "mutation.webhook.admission.k8s.io/round_0_index_42": "{\"configuration\":\"metis-mutation\",\"webhook\":\"label-user.app.cpaas.io\",\"mutated\":true}",
+    "patch.webhook.admission.k8s.io/round_0_index_42": "{\"configuration\":\"metis-mutation\",\"webhook\":\"label-user.app.cpaas.io\",\"patch\":[{\"op\":\"add\",\"path\":\"/metadata/annotations/cpaas.io~1creator\",\"value\":\"admin\"},{\"op\":\"add\",\"path\":\"/metadata/annotations/cpaas.io~1updated-at\",\"value\":\"2026-01-22T15:40:36Z\"}],\"patchType\":\"JSONPatch\"}"
+  },
+  "Cluster": "global",
+  "ReferObject": "fe01ce2a7fbac8fafaed7c982a04e229-ztblk"
+}
