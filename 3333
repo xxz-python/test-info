@@ -1,0 +1,65 @@
+{
+  "kind": "Event",
+  "apiVersion": "audit.k8s.io/v1",
+  "Level": "Metadata",
+  "AuditID": "36d6f352-e85c-4054-ac96-a7f689c68d35",
+  "Stage": "ResponseComplete",
+  "RequestURI": "/apis/dex.coreos.com/v1/namespaces/cpaas-system/passwords/fe01ce2a7fbac8fafaed7c982a04e229",
+  "Verb": "update",
+  "User": {
+    "username": "system:serviceaccount:cpaas-system:apollo",
+    "uid": "f7543dad-0d48-4f71-a39c-0e0082d0a123",
+    "groups": [
+      "system:serviceaccounts",
+      "system:serviceaccounts:cpaas-system",
+      "system:authenticated"
+    ],
+    "extra": {
+      "authentication.kubernetes.io/credential-id": [
+        "JTI=36c15571-7604-4b4a-a0ad-ac4de6eb3163"
+      ],
+      "authentication.kubernetes.io/node-name": [
+        "x18sacpgpn102a.acpg1.uat.dbs.com"
+      ],
+      "authentication.kubernetes.io/node-uid": [
+        "1be9feec-cf84-4e2e-b87c-847007d38f42"
+      ],
+      "authentication.kubernetes.io/pod-name": [
+        "apollo-7679d84c4f-mqqm5"
+      ],
+      "authentication.kubernetes.io/pod-uid": [
+        "89674c39-3107-4a10-b214-6f62b250e92f"
+      ]
+    }
+  },
+  "ImpersonatedUser": null,
+  "SourceIPs": [
+    "192.168.0.202",
+    "192.168.1.5"
+  ],
+  "UserAgent": "apollo/v0.0.0 (linux/amd64) kubernetes/$Format",
+  "ObjectRef": {
+    "Resource": "passwords",
+    "Namespace": "cpaas-system",
+    "Name": "fe01ce2a7fbac8fafaed7c982a04e229",
+    "UID": "a50c061c-9547-457c-a4af-55421bef8def",
+    "APIGroup": "dex.coreos.com",
+    "APIVersion": "v1",
+    "ResourceVersion": "109649913",
+    "Subresource": ""
+  },
+  "ResponseStatus": {
+    "metadata": {},
+    "code": 200
+  },
+  "RequestObject": null,
+  "ResponseObject": null,
+  "RequestReceivedTimestamp": "2026-01-22T15:44:23.613719Z",
+  "StageTimestamp": "2026-01-22T15:44:23.617948Z",
+  "Annotations": {
+    "authorization.k8s.io/decision": "allow",
+    "authorization.k8s.io/reason": "RBAC: allowed by ClusterRoleBinding \"dex-cluster\" of ClusterRole \"dex-cluster\" to ServiceAccount \"apollo/cpaas-system\""
+  },
+  "Cluster": "global",
+  "ReferObject": "fe01ce2a7fbac8fafaed7c982a04e229"
+}
