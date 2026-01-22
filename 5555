@@ -1,0 +1,386 @@
+{
+  "kind": "Event",
+  "apiVersion": "audit.k8s.io/v1",
+  "Level": "RequestResponse",
+  "AuditID": "35a3381a-3617-4ccd-a498-56a7983a87d9",
+  "Stage": "ResponseComplete",
+  "RequestURI": "/apis/auth.alauda.io/v1/userbindings/fe01ce2a7fbac8fafaed7c982a04e229-ztblk/status",
+  "Verb": "update",
+  "User": {
+    "username": "system:serviceaccount:cpaas-system:auth-controller2",
+    "uid": "f64909dc-ccbd-49cc-8ff5-583abd809b40",
+    "groups": [
+      "system:serviceaccounts",
+      "system:serviceaccounts:cpaas-system",
+      "system:authenticated"
+    ],
+    "extra": {
+      "authentication.kubernetes.io/credential-id": [
+        "JTI=0318abd7-f784-482b-8e77-ed96275ac17f"
+      ],
+      "authentication.kubernetes.io/node-name": [
+        "x18sacpgpn102a.acpg1.uat.dbs.com"
+      ],
+      "authentication.kubernetes.io/node-uid": [
+        "1be9feec-cf84-4e2e-b87c-847007d38f42"
+      ],
+      "authentication.kubernetes.io/pod-name": [
+        "auth-controller2-fd6dcd5d5-kqm2k"
+      ],
+      "authentication.kubernetes.io/pod-uid": [
+        "c05cbff1-87d1-43bb-8c47-d1bd95e72af5"
+      ]
+    }
+  },
+  "ImpersonatedUser": null,
+  "SourceIPs": [
+    "192.168.0.205"
+  ],
+  "UserAgent": "manager/v0.0.0 (linux/amd64) kubernetes/$Format",
+  "ObjectRef": {
+    "Resource": "userbindings",
+    "Namespace": "",
+    "Name": "fe01ce2a7fbac8fafaed7c982a04e229-ztblk",
+    "UID": "efad15f5-5519-44a1-8610-ab57fe7db943",
+    "APIGroup": "auth.alauda.io",
+    "APIVersion": "v1",
+    "ResourceVersion": "112411888",
+    "Subresource": "status"
+  },
+  "ResponseStatus": {
+    "metadata": {},
+    "code": 200
+  },
+  "RequestObject": {
+    "apiVersion": "auth.alauda.io/v1",
+    "kind": "UserBinding",
+    "metadata": {
+      "annotations": {
+        "auth.cpaas.io/clusterroles-hash": "4f85ac16248b51b19b4a8fd2947f03ddb7f6d077d3306d217edb0de3ad8eb500",
+        "auth.cpaas.io/role.display-name": "开发人员",
+        "auth.cpaas.io/user.email": "demo",
+        "cpaas.io/creator": "admin",
+        "cpaas.io/current-cluster": "global",
+        "cpaas.io/updated-at": "2026-01-22T15:40:36Z"
+      },
+      "creationTimestamp": "2026-01-22T15:40:36Z",
+      "generateName": "fe01ce2a7fbac8fafaed7c982a04e229-",
+      "generation": 1,
+      "labels": {
+        "auth.cpaas.io/role.level": "namespace",
+        "auth.cpaas.io/role.name": "namespace-developer-system",
+        "auth.cpaas.io/user.email": "fe01ce2a7fbac8fafaed7c982a04e229",
+        "cpaas.io/cluster": "acpsit1",
+        "cpaas.io/namespace": "test-javier",
+        "cpaas.io/project": "test"
+      },
+      "managedFields": [
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "fieldsType": "FieldsV1",
+          "fieldsV1": {
+            "f:metadata": {
+              "f:annotations": {
+                ".": {},
+                "f:auth.cpaas.io/role.display-name": {},
+                "f:auth.cpaas.io/user.email": {},
+                "f:cpaas.io/current-cluster": {}
+              },
+              "f:generateName": {},
+              "f:labels": {
+                ".": {},
+                "f:auth.cpaas.io/role.level": {},
+                "f:auth.cpaas.io/role.name": {},
+                "f:auth.cpaas.io/user.email": {},
+                "f:cpaas.io/cluster": {},
+                "f:cpaas.io/namespace": {},
+                "f:cpaas.io/project": {}
+              }
+            },
+            "f:spec": {
+              ".": {},
+              "f:constraint": {},
+              "f:roleRef": {},
+              "f:scope": {},
+              "f:subjects": {}
+            }
+          },
+          "manager": "apollo",
+          "operation": "Update",
+          "time": "2026-01-22T15:40:36Z"
+        },
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "fieldsType": "FieldsV1",
+          "fieldsV1": {
+            "f:metadata": {
+              "f:annotations": {
+                "f:auth.cpaas.io/clusterroles-hash": {}
+              },
+              "f:ownerReferences": {
+                ".": {},
+                "k:{\"uid\":\"91647228-8dd7-4875-af27-cfe00a89fa4e\"}": {}
+              }
+            }
+          },
+          "manager": "manager",
+          "operation": "Update",
+          "time": "2026-01-22T15:40:36Z"
+        },
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "fieldsType": "FieldsV1",
+          "fieldsV1": {
+            "f:status": {
+              ".": {},
+              "f:bindingsCreated": {
+                ".": {},
+                "f:clusterRoleBindings": {},
+                "f:roleBindings": {}
+              },
+              "f:conditions": {},
+              "f:lastReconcileTime": {},
+              "f:lastSpecHash": {},
+              "f:observedGeneration": {},
+              "f:phase": {}
+            }
+          },
+          "manager": "manager",
+          "operation": "Update",
+          "subresource": "status",
+          "time": "2026-01-22T15:40:36Z"
+        }
+      ],
+      "name": "fe01ce2a7fbac8fafaed7c982a04e229-ztblk",
+      "ownerReferences": [
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "kind": "ProjectMember",
+          "name": "test-fe01ce2a7fbac8fafaed7c982a04e229",
+          "uid": "91647228-8dd7-4875-af27-cfe00a89fa4e"
+        }
+      ],
+      "resourceVersion": "112411888",
+      "uid": "efad15f5-5519-44a1-8610-ab57fe7db943"
+    },
+    "spec": {
+      "constraint": [
+        {
+          "cluster": "acpsit1",
+          "namespace": "test-javier",
+          "project": "test"
+        }
+      ],
+      "roleRef": "namespace-developer-system",
+      "scope": "namespace",
+      "subjects": [
+        {
+          "kind": "User",
+          "name": "demo"
+        }
+      ]
+    },
+    "status": {
+      "bindingsCreated": {
+        "clusterRoleBindings": 1,
+        "roleBindings": 4
+      },
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-01-22T15:40:36Z",
+          "reason": "Validate",
+          "status": "True",
+          "type": "Validate"
+        },
+        {
+          "lastTransitionTime": "2026-01-22T15:40:36Z",
+          "message": "rolebinding & clusterrolebinding created",
+          "reason": "Creation",
+          "status": "True",
+          "type": "ResourceCreation"
+        },
+        {
+          "lastTransitionTime": "2026-01-22T15:40:36Z",
+          "message": "Successfully synced to all clusters",
+          "reason": "AllClustersSynced",
+          "status": "True",
+          "type": "ClusterSync"
+        }
+      ],
+      "lastReconcileTime": "2026-01-22T15:40:36Z",
+      "lastSpecHash": "60676d9eae025aebf79b2b9b3d01e9be",
+      "observedGeneration": 1,
+      "phase": "Success"
+    }
+  },
+  "ResponseObject": {
+    "apiVersion": "auth.alauda.io/v1",
+    "kind": "UserBinding",
+    "metadata": {
+      "annotations": {
+        "auth.cpaas.io/clusterroles-hash": "4f85ac16248b51b19b4a8fd2947f03ddb7f6d077d3306d217edb0de3ad8eb500",
+        "auth.cpaas.io/role.display-name": "开发人员",
+        "auth.cpaas.io/user.email": "demo",
+        "cpaas.io/creator": "admin",
+        "cpaas.io/current-cluster": "global",
+        "cpaas.io/updated-at": "2026-01-22T15:40:36Z"
+      },
+      "creationTimestamp": "2026-01-22T15:40:36Z",
+      "generateName": "fe01ce2a7fbac8fafaed7c982a04e229-",
+      "generation": 1,
+      "labels": {
+        "auth.cpaas.io/role.level": "namespace",
+        "auth.cpaas.io/role.name": "namespace-developer-system",
+        "auth.cpaas.io/user.email": "fe01ce2a7fbac8fafaed7c982a04e229",
+        "cpaas.io/cluster": "acpsit1",
+        "cpaas.io/namespace": "test-javier",
+        "cpaas.io/project": "test"
+      },
+      "managedFields": [
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "fieldsType": "FieldsV1",
+          "fieldsV1": {
+            "f:metadata": {
+              "f:annotations": {
+                ".": {},
+                "f:auth.cpaas.io/role.display-name": {},
+                "f:auth.cpaas.io/user.email": {},
+                "f:cpaas.io/current-cluster": {}
+              },
+              "f:generateName": {},
+              "f:labels": {
+                ".": {},
+                "f:auth.cpaas.io/role.level": {},
+                "f:auth.cpaas.io/role.name": {},
+                "f:auth.cpaas.io/user.email": {},
+                "f:cpaas.io/cluster": {},
+                "f:cpaas.io/namespace": {},
+                "f:cpaas.io/project": {}
+              }
+            },
+            "f:spec": {
+              ".": {},
+              "f:constraint": {},
+              "f:roleRef": {},
+              "f:scope": {},
+              "f:subjects": {}
+            }
+          },
+          "manager": "apollo",
+          "operation": "Update",
+          "time": "2026-01-22T15:40:36Z"
+        },
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "fieldsType": "FieldsV1",
+          "fieldsV1": {
+            "f:metadata": {
+              "f:annotations": {
+                "f:auth.cpaas.io/clusterroles-hash": {}
+              },
+              "f:ownerReferences": {
+                ".": {},
+                "k:{\"uid\":\"91647228-8dd7-4875-af27-cfe00a89fa4e\"}": {}
+              }
+            }
+          },
+          "manager": "manager",
+          "operation": "Update",
+          "time": "2026-01-22T15:40:36Z"
+        },
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "fieldsType": "FieldsV1",
+          "fieldsV1": {
+            "f:status": {
+              ".": {},
+              "f:bindingsCreated": {
+                ".": {},
+                "f:clusterRoleBindings": {},
+                "f:roleBindings": {}
+              },
+              "f:conditions": {},
+              "f:lastReconcileTime": {},
+              "f:lastSpecHash": {},
+              "f:observedGeneration": {},
+              "f:phase": {}
+            }
+          },
+          "manager": "manager",
+          "operation": "Update",
+          "subresource": "status",
+          "time": "2026-01-22T15:40:36Z"
+        }
+      ],
+      "name": "fe01ce2a7fbac8fafaed7c982a04e229-ztblk",
+      "ownerReferences": [
+        {
+          "apiVersion": "auth.alauda.io/v1",
+          "kind": "ProjectMember",
+          "name": "test-fe01ce2a7fbac8fafaed7c982a04e229",
+          "uid": "91647228-8dd7-4875-af27-cfe00a89fa4e"
+        }
+      ],
+      "resourceVersion": "112411889",
+      "uid": "efad15f5-5519-44a1-8610-ab57fe7db943"
+    },
+    "spec": {
+      "constraint": [
+        {
+          "cluster": "acpsit1",
+          "namespace": "test-javier",
+          "project": "test"
+        }
+      ],
+      "roleRef": "namespace-developer-system",
+      "scope": "namespace",
+      "subjects": [
+        {
+          "kind": "User",
+          "name": "demo"
+        }
+      ]
+    },
+    "status": {
+      "bindingsCreated": {
+        "clusterRoleBindings": 1,
+        "roleBindings": 4
+      },
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-01-22T15:40:36Z",
+          "reason": "Validate",
+          "status": "True",
+          "type": "Validate"
+        },
+        {
+          "lastTransitionTime": "2026-01-22T15:40:36Z",
+          "message": "rolebinding & clusterrolebinding created",
+          "reason": "Creation",
+          "status": "True",
+          "type": "ResourceCreation"
+        },
+        {
+          "lastTransitionTime": "2026-01-22T15:40:36Z",
+          "message": "Successfully synced to all clusters",
+          "reason": "AllClustersSynced",
+          "status": "True",
+          "type": "ClusterSync"
+        }
+      ],
+      "lastReconcileTime": "2026-01-22T15:40:36Z",
+      "lastSpecHash": "60676d9eae025aebf79b2b9b3d01e9be",
+      "observedGeneration": 1,
+      "phase": "Success"
+    }
+  },
+  "RequestReceivedTimestamp": "2026-01-22T15:40:36.491242Z",
+  "StageTimestamp": "2026-01-22T15:40:36.497305Z",
+  "Annotations": {
+    "authorization.k8s.io/decision": "allow",
+    "authorization.k8s.io/reason": "RBAC: allowed by ClusterRoleBinding \"auth-controller2-cluster\" of ClusterRole \"auth-controller2-cluster\" to ServiceAccount \"auth-controller2/cpaas-system\""
+  },
+  "Cluster": "global",
+  "ReferObject": "fe01ce2a7fbac8fafaed7c982a04e229-ztblk"
+}
